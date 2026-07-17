@@ -1,0 +1,9 @@
+langgraph
+langchain
+langchain-openai
+langchain-pinecone
+langchain-text-splitters
+pinecone-client
+supabase
+streamlit
+pydantic
