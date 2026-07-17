@@ -8,6 +8,10 @@ from supabase import create_client
 from agent import evaluate_submission
 from ingest import ingest_assignment_material
 
+for key in ["OPENAI_API_KEY", "PINECONE_API_KEY", "PINECONE_INDEX_NAME", "SUPABASE_URL", "SUPABASE_SERVICE_KEY"]:
+    if key in st.secrets:
+        os.environ[key] = st.secrets[key]
+
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
