@@ -1,26 +1,64 @@
-from dotenv import load_dotenv
-load_dotenv()
 import os
 
 import streamlit as st
+from dotenv import load_dotenv
 from supabase import create_client
+
+load_dotenv()  # works locally if .env exists
+
+# Bridge Streamlit Cloud secrets into os.environ so agent.py / ingest.py
+# keep working unchanged whether running locally or on Streamlit Cloud
+for _key in ["OPENAI_API_KEY", "PINECONE_API_KEY", "PINECONE_INDEX_NAME", "SUPABASE_URL", "SUPABASE_SERVICE_KEY", "TEACHER_PASSWORD"]:
+    if _key in st.secrets:
+        os.environ[_key] = st.secrets[_key]
 
 from agent import evaluate_submission
 from ingest import ingest_assignment_material
 
-for key in ["OPENAI_API_KEY", "PINECONE_API_KEY", "PINECONE_INDEX_NAME", "SUPABASE_URL", "SUPABASE_SERVICE_KEY"]:
-    if key in st.secrets:
-        os.environ[key] = st.secrets[key]
-
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+TEACHER_PASSWORD = os.environ.get("TEACHER_PASSWORD", "")
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="Assignment Grader", layout="wide")
 
+if "teacher_authenticated" not in st.session_state:
+    st.session_state.teacher_authenticated = False
+
+
+def teacher_login_gate():
+    """Show a password prompt and block access until it matches TEACHER_PASSWORD."""
+    st.title("Teacher login")
+
+    if not TEACHER_PASSWORD:
+        st.error(
+            "TEACHER_PASSWORD is not set. Add it to your .env file locally, "
+            "or to your Streamlit Cloud secrets, before this page can be used."
+        )
+        return False
+
+    if st.session_state.teacher_authenticated:
+        return True
+
+    entered = st.text_input("Password", type="password")
+    if st.button("Log in"):
+        if entered == TEACHER_PASSWORD:
+            st.session_state.teacher_authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+    return False
+
+
 page = st.sidebar.radio("Navigate", ["Student: Submit", "Teacher: Setup Assignment", "Dashboard"])
 
 if page == "Teacher: Setup Assignment":
+    if not teacher_login_gate():
+        st.stop()
+
+    st.sidebar.button("Log out", on_click=lambda: st.session_state.update(teacher_authenticated=False))
+
     st.title("Set up an assignment")
     title = st.text_input("Assignment title")
     max_score = st.number_input("Max score", value=100)
@@ -63,6 +101,11 @@ elif page == "Student: Submit":
             st.write(result["overall_feedback"])
 
 elif page == "Dashboard":
+    if not teacher_login_gate():
+        st.stop()
+
+    st.sidebar.button("Log out", on_click=lambda: st.session_state.update(teacher_authenticated=False))
+
     st.title("Evaluation dashboard")
     evals = (
         supabase.table("evaluations")
