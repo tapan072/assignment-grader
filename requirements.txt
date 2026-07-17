@@ -7,3 +7,4 @@ pinecone-client
 supabase
 streamlit
 pydantic
+python-dotenv
