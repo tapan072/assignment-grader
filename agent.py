@@ -19,7 +19,6 @@ Required environment variables:
 import os
 import json
 from typing import TypedDict, List, Optional
-# Tapan!@#123
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone
